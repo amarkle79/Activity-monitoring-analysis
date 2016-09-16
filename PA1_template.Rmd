@@ -1,0 +1,47 @@
+---
+title: "Analysis of Activity Monitoring Data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+    library(ggplot2)
+    knitr::opts_chunk$set(echo = FALSE)
+    data <- read.csv("activity.csv", header=TRUE)
+```
+
+# What is mean total number of steps taken per day?
+```{r mean}
+    total_steps <- aggregate(steps ~ date, data, sum)
+    hist(total_steps$steps, main="", xlab="Number of steps taken per day")
+```
+
+The mean total number of steps taken per day is `r mean(data$steps, na.rm=TRUE)`, while the median is `r median(data$steps, na.rm=TRUE)`.
+
+# What is the average daily activity pattern?
+```{r activity}
+    steps_by_interval <- aggregate(steps ~ interval, data, mean)
+    plot(steps_by_interval$steps ~ steps_by_interval$interval, type="l", xlab="Interval", ylab="Average number of steps")
+```
+
+On average, the `r steps_by_interval$interval[which.max(steps_by_interval$steps)]` interval contains the maximum number of steps.
+
+# Imputing missing values
+```{r missing}
+    complete_data <- data
+    complete_data$steps[is.na(data$steps)] <- merge(data, steps_by_interval, by="interval")$steps.y[is.na(data$steps)]
+    mean_steps_complete <- aggregate(steps ~ date, data, sum)
+    hist(mean_steps_complete$steps, main="", xlab="Number of steps taken per day")
+```
+
+In total there are `r sum(is.na(data$steps))` missing values in the dataset. Missing values have been imputed with the average value for that interval. In this augmented dataset the mean total number of steps taken per day is `r mean(complete_data$steps, na.rm=TRUE)`, while the median is `r median(complete_data$steps, na.rm=TRUE)`. There is a minimial effect of imputing the missing data on the mean and median of the total number of steps taken per day.
+
+# Are there differences in activity patterns between weekdays and weekends?
+```{r weekday}
+    complete_data$weekday <- factor(weekdays(as.Date(complete_data$date)) %in% c("Saturday", "Sunday"))
+    levels(complete_data$weekday) <- c("weekday", "weekend")
+
+    complete_steps_by_interval <- aggregate(steps ~ interval + weekday, complete_data, mean)
+    ggplot(data=complete_steps_by_interval, aes(x=interval, y=steps, group=weekday)) + geom_line() + facet_grid(weekday ~ .)
+```
+
+Looks like people sleep in on weekends: there is more activity in the earlier intervals on weekdays.
